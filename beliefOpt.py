@@ -9,18 +9,17 @@ def _get_prob_matrix(alpha, q, n):
     R = np.zeros((n, n))
     Xi = np.zeros((n, n))
 
-    beta = 1 / alpha
-
     # get Q
     for i in range(n):
         for j in range(n):
-            if np.isnan(beta[i, j]):
+            if alpha[i, j] == 0:
                 continue
-            R[i, j] = beta[i, j] + q[i] + q[j]
-            sign = -1 if beta[i, j] < 0 else 1
+            beta = 1 / alpha[i, j]
+            R[i, j] = beta + q[i] + q[j]
+            sign = -1 if beta < 0 else 1
             Xi[i, j] = 1 / 2 * (R[i, j] -
                                 sign * np.sqrt(R[i, j] ** 2 - 4 *
-                                               (1 + beta[i, j]) * q[i] * q[j]))
+                                               (1 + beta) * q[i] * q[j]))
             if Xi[i, j] < q[i] + q[j] - 1:
                 raise ValueError("This is behaviour is unexpected, please contact your nearest coding monkey")
 
@@ -47,16 +46,15 @@ def _update_q(q, b, Xi, n, neighbors_list):
     return updated_q
 
 
-def belief_optimization(W, b, y, n_iter, neighbors):
+def belief_optimization(W, b, q, n_iter, neighbors):
     """Apply the Belief Optimization algorithm"""
 
-    n = len(y)  # n is the number of nodes, not the grid_size
-
+    n = len(q)  # n is the number of nodes, not the grid_size
     alpha = np.exp(W) - 1.0
-    q = sigmoid(y)
 
     for _ in range(n_iter):
         Xi = _get_prob_matrix(alpha, q, n)
+        print("Xi", np.reshape(Xi, (n, n)))
         q = _update_q(q, b, Xi, n, neighbors)
 
     return q
