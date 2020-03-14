@@ -6,17 +6,22 @@ from utils import sigmoid
 
 def _get_prob_matrix(alpha, q, n):
     """Get the Probability matrices"""
-    Q = np.zeros((n, n))
+
+    # TODO investigate why some Xi values are negative
+    # Might be due to poor definition of the Weight matrix
+    R = np.zeros((n, n))
     Xi = np.zeros((n, n))
+
+    beta = 1 / alpha
 
     # get Q
     for i in range(n):
         for j in range(n):
-            # TODO Check order of Q and Xi updates
-            Q[i, j] = 1 + alpha[i, j] * q[i] + alpha[i, j] * q[j]
-            Xi[i, j] = 1 / alpha[i, j] * (
-                    Q[i, j] - np.sqrt(Q[i, j] ** 2 - 4 * alpha[i, j] *
-                                      (1 + alpha[i, j]) * q[i] * q[j]))
+            R[i, j] = beta[i, j] + q[i] + q[j]
+            sign = -1 if beta[i, j] < 0 else 1
+            Xi[i, j] = 1 / 2 * (R[i, j] -
+                                sign * np.sqrt(R[i, j] ** 2 - 4 *
+                                               (1 + beta[i, j]) * q[i] * q[j]))
 
     return Xi
 
@@ -33,6 +38,13 @@ def _update_q(q, b, Xi, n, neighbors_list):
         for j in current_neighbors:
             numerator = numerator * (Xi[i, j] + 1 - q[i] - q[j])
             denominator = denominator * (q[i] - Xi[i, j])
+            print("Numerator")
+            print(Xi[i, j] + 1 - q[i] - q[j])
+            print(Xi[i, j])
+            print(q[i])
+            print(q[j])
+            print()
+
         q[i] = sigmoid(b[i] + np.log(numerator / denominator))
 
     return q
@@ -41,15 +53,13 @@ def _update_q(q, b, Xi, n, neighbors_list):
 def belief_optimization(W, b, y, n_iter, neighbors):
     """Apply the Belief Optimization algorithm"""
 
-    n = len(y)
+    n = len(y)  # n is the number of nodes, not the grid_size
 
-    alpha = np.exp(W) - 0.99 # avoid cases with alpha == 0
+    alpha = np.exp(W) - 0.99  # avoid cases with alpha == 0
     q = sigmoid(y)
 
     for _ in range(n_iter):
         Xi = _get_prob_matrix(alpha, q, n)
-        print(Xi)
-
         q = _update_q(q, b, Xi, n, neighbors)
 
     return q
