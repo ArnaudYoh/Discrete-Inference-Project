@@ -4,8 +4,10 @@ import numpy as np
 from utils import generate_grid
 from beliefOpt import belief_optimization
 
+# TODO implement the junction tree algorithm for comparison of results.
 
 def grid_example(grid_size=10, scale: float = 1.):
+    """Runs the basic grid example"""
     if grid_size < 2:
         raise ValueError("Grid Size should be at least 2")
     if scale > 1.0:
@@ -22,7 +24,6 @@ def grid_example(grid_size=10, scale: float = 1.):
         bias[i] -= 1 / 2 * neighbors_weight
 
     print(belief_optimization(Weight, bias, q, 1, neighbors))
-
 
 
 if __name__ == "__main__":

@@ -6,9 +6,6 @@ from utils import sigmoid
 
 def _get_prob_matrix(alpha, q, n):
     """Get the Probability matrices"""
-
-    # TODO investigate why some Xi values are negative
-    # Might be due to poor definition of the Weight matrix
     R = np.zeros((n, n))
     Xi = np.zeros((n, n))
 
@@ -17,17 +14,23 @@ def _get_prob_matrix(alpha, q, n):
     # get Q
     for i in range(n):
         for j in range(n):
+            if np.isnan(beta[i, j]):
+                continue
             R[i, j] = beta[i, j] + q[i] + q[j]
             sign = -1 if beta[i, j] < 0 else 1
             Xi[i, j] = 1 / 2 * (R[i, j] -
                                 sign * np.sqrt(R[i, j] ** 2 - 4 *
                                                (1 + beta[i, j]) * q[i] * q[j]))
+            if Xi[i, j] < q[i] + q[j] - 1:
+                raise ValueError("This is behaviour is unexpected, please contact your nearest coding monkey")
 
     return Xi
 
 
 def _update_q(q, b, Xi, n, neighbors_list):
     """Update the for each node i : q_i = p_i(label = 1)"""
+
+    updated_q = np.copy(q)
 
     for i in range(n):
         current_neighbors = neighbors_list[i]
@@ -38,16 +41,10 @@ def _update_q(q, b, Xi, n, neighbors_list):
         for j in current_neighbors:
             numerator = numerator * (Xi[i, j] + 1 - q[i] - q[j])
             denominator = denominator * (q[i] - Xi[i, j])
-            print("Numerator")
-            print(Xi[i, j] + 1 - q[i] - q[j])
-            print(Xi[i, j])
-            print(q[i])
-            print(q[j])
-            print()
 
-        q[i] = sigmoid(b[i] + np.log(numerator / denominator))
+        updated_q[i] = sigmoid(b[i] + np.log(numerator / denominator))
 
-    return q
+    return updated_q
 
 
 def belief_optimization(W, b, y, n_iter, neighbors):
@@ -55,7 +52,7 @@ def belief_optimization(W, b, y, n_iter, neighbors):
 
     n = len(y)  # n is the number of nodes, not the grid_size
 
-    alpha = np.exp(W) - 0.99  # avoid cases with alpha == 0
+    alpha = np.exp(W) - 1.0
     q = sigmoid(y)
 
     for _ in range(n_iter):
