@@ -21,12 +21,40 @@ def _get_prob_matrix(alpha, q, n):
                                 sign * np.sqrt(R[i, j] ** 2 - 4 *
                                                (1 + beta) * q[i] * q[j]))
             if Xi[i, j] < q[i] + q[j] - 1:
-                raise ValueError("This is behaviour is unexpected, please contact your nearest coding monkey")
+                raise ValueError("This is behaviour is unexpected, we cannot have Xi[i, j] < q[i] + q[j] - 1")
+
+            if Xi[i, j] > q[i]:
+                raise ValueError("This is behaviour is unexpected, we cannot have Xi[i, j] > q[i]")
+
+            if Xi[i, j] > q[j]:
+                raise ValueError("This is behaviour is unexpected, we cannot have Xi[i, j] > q[j]")
 
     return Xi
 
 
-def _update_q(q, b, Xi, n, neighbors_list):
+def _update_q_gradient(q, b, Xi, n, neighbors_list):
+    """Update the for each node i : q_i = p_i(label = 1)"""
+    updated_q = np.copy(q)
+
+    for i in range(n):
+        current_neighbors = neighbors_list[i]
+        neighbor_count = len(current_neighbors)
+        if neighbor_count == 0:
+            continue
+
+        numerator = (1 - q[i]) ** (neighbor_count - 1)
+        denominator = q[i] ** (neighbor_count - 1)
+        for j in current_neighbors:
+            numerator = numerator * (q[i] - Xi[i, j])
+            denominator = denominator * (Xi[i, j] + 1 - q[i] - q[j])
+
+        gradient = (-b[i] + np.log(numerator / denominator)) * q[i] * (1 - q[i])
+        updated_q[i] -= gradient
+
+    return updated_q
+
+
+def _update_q_fixed_point(q, b, Xi, n, neighbors_list):
     """Update the for each node i : q_i = p_i(label = 1)"""
 
     updated_q = np.copy(q)
@@ -34,6 +62,8 @@ def _update_q(q, b, Xi, n, neighbors_list):
     for i in range(n):
         current_neighbors = neighbors_list[i]
         neighbor_count = len(current_neighbors)
+        if neighbor_count == 0:
+            continue
 
         numerator = q[i] ** neighbor_count
         denominator = (1 - q[i]) ** neighbor_count
@@ -46,7 +76,29 @@ def _update_q(q, b, Xi, n, neighbors_list):
     return updated_q
 
 
-def belief_optimization(W, b, q, n_iter, neighbors):
+def compute_bethe_free_energy(W, Xi, q, b, neighbors_list, n):
+    E_nodes = 0
+    E_edges = 0
+    S1 = 0
+    S2 = 0
+    for i in range(n):
+        E_nodes -= b[i] * q[i]
+        current_neighbors = neighbors_list[i]
+        neighbor_count = len(current_neighbors)
+        S1 -= (1 - neighbor_count) * (q[i] * np.log(q[i]) + (1 - q[i]) * np.log(1 - q[i]))
+        for j in current_neighbors:
+            E_edges -= W[i, j] * Xi[i, j]
+            S2 -= Xi[i, j] * np.log(Xi[i, j]) + (Xi[i, j] + 1 - q[i] - q[j]) * np.log((Xi[i, j] + 1 - q[i] - q[j])) + \
+                (q[i] - Xi[i, j]) * np.log(q[i] - Xi[i, j]) + (q[j] - Xi[i, j]) * np.log(q[j] - Xi[i, j])
+
+    # W counted each edge twice
+    E_edges = E_edges / 2
+    S2 = S2 / 2
+
+    return E_nodes + E_edges + S1 + S2
+
+
+def belief_optimization(W, b, q, n_iter, neighbors, use_grad=False):
     """Apply the Belief Optimization algorithm"""
 
     n = len(q)  # n is the number of nodes, not the grid_size
@@ -54,7 +106,10 @@ def belief_optimization(W, b, q, n_iter, neighbors):
 
     for _ in range(n_iter):
         Xi = _get_prob_matrix(alpha, q, n)
-        print("Xi", np.reshape(Xi, (n, n)))
-        q = _update_q(q, b, Xi, n, neighbors)
+        print(compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
+        if use_grad:
+            q = _update_q_gradient(q, b, Xi, n, neighbors)
+        else:
+            q = _update_q_fixed_point(q, b, Xi, n, neighbors)
 
     return q

@@ -19,6 +19,8 @@ def generate_grid(n, p0=0.5, p1=0.5):
     W = np.zeros((n * n, n * n))
     for i in range(n * n):
         neighbors[i] = []
+        if i == 0:
+            continue
         if i > n - 1:
             neighbors[i].append(i - n)
             W[i, i - n] += 1
