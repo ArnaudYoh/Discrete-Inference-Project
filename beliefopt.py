@@ -1,4 +1,4 @@
-"""Function used for the belief Optimization"""
+"""Functions used for the belief Optimization"""
 
 import numpy as np
 from utils import sigmoid

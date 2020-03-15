@@ -2,7 +2,7 @@
 
 import numpy as np
 from utils import generate_grid
-from beliefOpt import belief_optimization
+from beliefopt import belief_optimization
 
 
 # TODO implement the junction tree algorithm for comparison of results.
