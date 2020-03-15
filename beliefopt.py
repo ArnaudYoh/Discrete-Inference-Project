@@ -4,7 +4,7 @@ import numpy as np
 from utils import sigmoid
 
 
-def _get_prob_matrix(alpha, q, n):
+def _get_Xi(alpha, q, n):
     """Get the Probability matrices"""
     R = np.zeros((n, n))
     Xi = np.zeros((n, n))
@@ -30,6 +30,30 @@ def _get_prob_matrix(alpha, q, n):
                 raise ValueError("This is behaviour is unexpected, we cannot have Xi[i, j] > q[j]")
 
     return Xi
+
+
+def _update_q_gradient2(W, q, b, Xi, n, neighbors_list, alpha):
+    """Update the for each node i : q_i = p_i(label = 1)"""
+    updated_q = np.copy(q)
+
+    for i in range(n):
+        current_neighbors = neighbors_list[i]
+        neighbor_count = len(current_neighbors)
+        if neighbor_count == 0:
+            continue
+
+        numerator = (1 - updated_q[i]) ** (neighbor_count - 1)
+        denominator = updated_q[i] ** (neighbor_count - 1)
+        for j in current_neighbors:
+            numerator = numerator * (updated_q[i] - Xi[i, j])
+            denominator = denominator * (Xi[i, j] + 1 - updated_q[i] - updated_q[j])
+
+        gradient = (-b[i] + np.log(numerator / denominator)) * updated_q[i] * (1 - updated_q[i])
+        updated_q[i] -= gradient
+        Xi = _get_Xi(alpha, updated_q, n)
+        # print(compute_bethe_free_energy(W, Xi, updated_q, b, neighbors_list, n))
+
+    return updated_q
 
 
 def _update_q_gradient(q, b, Xi, n, neighbors_list):
@@ -91,7 +115,7 @@ def compute_bethe_free_energy(W, Xi, q, b, neighbors_list, n):
             S2 -= Xi[i, j] * np.log(Xi[i, j]) + (Xi[i, j] + 1 - q[i] - q[j]) * np.log((Xi[i, j] + 1 - q[i] - q[j])) + \
                 (q[i] - Xi[i, j]) * np.log(q[i] - Xi[i, j]) + (q[j] - Xi[i, j]) * np.log(q[j] - Xi[i, j])
 
-    # W counted each edge twice
+    # We counted each edge twice
     E_edges = E_edges / 2
     S2 = S2 / 2
 
@@ -104,12 +128,14 @@ def belief_optimization(W, b, q, n_iter, neighbors, use_grad=False):
     n = len(q)  # n is the number of nodes, not the grid_size
     alpha = np.exp(W) - 1.0
 
-    for _ in range(n_iter):
-        Xi = _get_prob_matrix(alpha, q, n)
-        print(compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
+    for i in range(n_iter):
+        Xi = _get_Xi(alpha, q, n)
+        print("iteration", i)
+        print("Après l'update du nouveau Xi", compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
         if use_grad:
             q = _update_q_gradient(q, b, Xi, n, neighbors)
         else:
             q = _update_q_fixed_point(q, b, Xi, n, neighbors)
+        print("Avant l'update du nouveau Xi", compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
 
     return q

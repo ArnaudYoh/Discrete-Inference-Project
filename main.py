@@ -7,7 +7,7 @@ from junctiontree import IsingJunction
 
 # TODO implement the junction tree algorithm for comparison of results.
 
-def grid_example(grid_size=10, weight_scale: float = 1., bias_scale: float = .1):
+def grid_example(grid_size=10, weight_scale: float = 1., bias_scale: float = .1, n_iter=2):
     """Runs the basic grid example"""
     if grid_size < 2:
         raise ValueError("Grid Size should be at least 2")
@@ -27,17 +27,16 @@ def grid_example(grid_size=10, weight_scale: float = 1., bias_scale: float = .1)
         neighbors_weight = sum([Weight[i, neighbor] for neighbor in neighbors[i]])
         bias[i] -= 1 / 2 * neighbors_weight
 
-    result_fixed = belief_optimization(Weight, bias, q, 10, neighbors, use_grad=False)
-    result_grad = belief_optimization(Weight, bias, q, 10, neighbors, use_grad=True)
+    #result_fixed = belief_optimization(Weight, bias, q, n_iter, neighbors, use_grad=False)
+    result_grad = belief_optimization(Weight, bias, q, n_iter, neighbors, use_grad=True)
 
     Z, energy = junction_alg.compute_Z()
     predicted_junction_tree = np.exp(- energy) / Z
-    #print("Bias", np.reshape(bias, (grid_size, grid_size)))
-    print("junction tree", np.reshape(predicted_junction_tree, (grid_size, grid_size)))
+    print("Bias", np.reshape(bias, (grid_size, grid_size)))
     print("OG q", np.reshape(q, (grid_size, grid_size)))
-    print("Updated q with fixed", np.reshape(result_fixed, (grid_size, grid_size)))
-    print("Updated q with grad", np.reshape(result_fixed, (grid_size, grid_size)))
+    #print("Updated q with fixed", np.reshape(result_fixed, (grid_size, grid_size)))
+    print("Updated q with grad", np.reshape(result_grad, (grid_size, grid_size)))
 
 
 if __name__ == "__main__":
-    grid_example(grid_size=3)
+    grid_example(grid_size=3, n_iter=2)
