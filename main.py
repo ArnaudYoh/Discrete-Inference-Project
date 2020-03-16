@@ -32,11 +32,10 @@ def grid_example(grid_size=10, weight_scale: float = 1., bias_scale: float = .1,
 
     Z, energy = junction_alg.compute_Z()
     predicted_junction_tree = np.exp(- energy) / Z
-    print("Bias", np.reshape(bias, (grid_size, grid_size)))
     print("OG q", np.reshape(q, (grid_size, grid_size)))
     #print("Updated q with fixed", np.reshape(result_fixed, (grid_size, grid_size)))
     print("Updated q with grad", np.reshape(result_grad, (grid_size, grid_size)))
 
 
 if __name__ == "__main__":
-    grid_example(grid_size=3, n_iter=2)
+    grid_example(grid_size=2, n_iter=500)

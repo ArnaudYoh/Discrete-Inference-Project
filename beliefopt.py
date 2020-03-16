@@ -51,11 +51,12 @@ def _update_q_gradient2(W, q, b, Xi, n, neighbors_list, alpha):
         gradient = (-b[i] + np.log(numerator / denominator)) * updated_q[i] * (1 - updated_q[i])
         updated_q[i] -= gradient
         Xi = _get_Xi(alpha, updated_q, n)
-        # print(compute_bethe_free_energy(W, Xi, updated_q, b, neighbors_list, n))
+        print(compute_bethe_free_energy(W, Xi, updated_q, b, neighbors_list, n))
 
     return updated_q
 
 
+# TODO Check if adding back y to the gradient works
 def _update_q_gradient(q, b, Xi, n, neighbors_list):
     """Update the for each node i : q_i = p_i(label = 1)"""
     updated_q = np.copy(q)
@@ -112,6 +113,7 @@ def compute_bethe_free_energy(W, Xi, q, b, neighbors_list, n):
         S1 -= (1 - neighbor_count) * (q[i] * np.log(q[i]) + (1 - q[i]) * np.log(1 - q[i]))
         for j in current_neighbors:
             E_edges -= W[i, j] * Xi[i, j]
+            E_edges -= W[i, j] * (Xi[i, j] + 1 - q[i] - q[j])
             S2 -= Xi[i, j] * np.log(Xi[i, j]) + (Xi[i, j] + 1 - q[i] - q[j]) * np.log((Xi[i, j] + 1 - q[i] - q[j])) + \
                 (q[i] - Xi[i, j]) * np.log(q[i] - Xi[i, j]) + (q[j] - Xi[i, j]) * np.log(q[j] - Xi[i, j])
 
@@ -128,14 +130,17 @@ def belief_optimization(W, b, q, n_iter, neighbors, use_grad=False):
     n = len(q)  # n is the number of nodes, not the grid_size
     alpha = np.exp(W) - 1.0
 
+    #q = sigmoid(q)
+
     for i in range(n_iter):
         Xi = _get_Xi(alpha, q, n)
         print("iteration", i)
-        print("Après l'update du nouveau Xi", compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
+        print("Après l'update du nouveau Xi {:.4f} \n".format(compute_bethe_free_energy(W, Xi, q, b, neighbors, n)))
         if use_grad:
             q = _update_q_gradient(q, b, Xi, n, neighbors)
+            # q = _update_q_gradient2(W, q, b, Xi, n, neighbors, alpha)
         else:
             q = _update_q_fixed_point(q, b, Xi, n, neighbors)
-        print("Avant l'update du nouveau Xi", compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
+        #print("Avant l'update du nouveau Xi", compute_bethe_free_energy(W, Xi, q, b, neighbors, n))
 
     return q
